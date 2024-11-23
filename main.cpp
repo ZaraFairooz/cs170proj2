@@ -5,9 +5,33 @@
 #include <queue>
 #include <algorithm>
 #include <iterator>
+#include <numeric>
+#include <cmath>
+#include <cstdlib>
 
 using namespace std;
 
+// Struct to represent a data instance
+struct Instance {
+    double label;
+    vector<double> features;
+
+    Instance(double label = 0) : label(label) {}
+
+    void append_feature(double value) {
+        features.push_back(value);
+    }
+
+    const vector<double>& get_features() const {
+        return features;
+    }
+
+    void set_type(double label) {
+        this->label = label;
+    }
+};
+
+// Struct to represent a feature subset and its accuracy
 struct FeatureSet {
     double accuracy;
     vector<int> selected_features;
@@ -38,28 +62,24 @@ struct FeatureSet {
     }
 };
 
+// Parse the input dataset file
 vector<Instance> parseInputFile(const string& filename) {
     ifstream file_stream(filename);
     vector<Instance> instances;
 
     while (file_stream.good()) {
-        Instance instance;
-        double label = INT_MAX;
+        double label;
         vector<double> feature_values;
         double value;
 
         string line;
         getline(file_stream, line);
+        if (line.empty()) continue;
 
         istringstream line_stream(line);
         line_stream >> label;
 
-        if (label == INT_MAX) {
-            break;
-        }
-
-        instance.set_type(label);
-
+        Instance instance(label);
         while (line_stream >> value) {
             instance.append_feature(value);
         }
@@ -70,30 +90,23 @@ vector<Instance> parseInputFile(const string& filename) {
     return instances;
 }
 
-bool isFeatureSelected(int feature, const vector<int>& feature_set) {
-    return find(feature_set.begin(), feature_set.end(), feature) != feature_set.end();
+// Dummy accuracy evaluation function
+double calculateAccuracy(const vector<int>& features) {
+    return static_cast<double>(rand()) / RAND_MAX * 100.0;
 }
 
-void evaluation() {
-    percentage = static_cast<double>(rand()) / RAND_MAX * 1000.0;
-    percentage = round(percentage * 10.0) / 10.0;
-}
-
-static double getEvaluation () {
-    return percentage;
-}
-
-void performForwardSelection(Problem& problem, int num_features) {
+// Perform forward selection
+void performForwardSelection(const vector<Instance>& instances, int num_features) {
     cout << "This dataset has " << num_features << " features with "
-         << problem.dataset_size() << " instances:" << endl << endl;
+         << instances.size() << " instances:" << endl << endl;
 
     priority_queue<FeatureSet> feature_queue;
     FeatureSet best_feature_set;
     best_feature_set.accuracy = 0;
 
     FeatureSet current_feature_set;
-    current_feature_set.selected_features = {};
-    current_feature_set.accuracy = problem.Nearest_N(current_feature_set.selected_features);
+    current_feature_set.selected_features.clear();
+    current_feature_set.accuracy = calculateAccuracy(current_feature_set.selected_features);
     current_feature_set.display();
 
     vector<int> selected_features;
@@ -101,14 +114,14 @@ void performForwardSelection(Problem& problem, int num_features) {
 
     for (int round = 0; round < num_features; ++round) {
         for (int feature = 0; feature < num_features; ++feature) {
-            if (isFeatureSelected(feature, selected_features)) {
+            if (find(selected_features.begin(), selected_features.end(), feature) != selected_features.end()) {
                 continue;
             }
 
             FeatureSet candidate_feature_set;
             candidate_feature_set.selected_features = selected_features;
             candidate_feature_set.selected_features.push_back(feature);
-            candidate_feature_set.accuracy = problem.Nearest_N(candidate_feature_set.selected_features);
+            candidate_feature_set.accuracy = calculateAccuracy(candidate_feature_set.selected_features);
             feature_queue.push(candidate_feature_set);
         }
 
@@ -134,9 +147,10 @@ void performForwardSelection(Problem& problem, int num_features) {
     best_feature_set.display();
 }
 
-void performBackwardElimination(Problem& problem, int num_features) {
+// Perform backward elimination
+void performBackwardElimination(const vector<Instance>& instances, int num_features) {
     cout << "This dataset has " << num_features << " features with "
-         << problem.dataset_size() << " instances:" << endl << endl;
+         << instances.size() << " instances:" << endl << endl;
 
     priority_queue<FeatureSet> feature_queue;
     FeatureSet best_feature_set;
@@ -147,14 +161,14 @@ void performBackwardElimination(Problem& problem, int num_features) {
     iota(selected_features.begin(), selected_features.end(), 0);
 
     current_feature_set.selected_features = selected_features;
-    current_feature_set.accuracy = problem.Nearest_N(current_feature_set.selected_features);
+    current_feature_set.accuracy = calculateAccuracy(current_feature_set.selected_features);
     current_feature_set.display();
 
     bool accuracy_warning = true;
 
     for (int round = 0; round < num_features; ++round) {
         for (int feature = 0; feature < num_features; ++feature) {
-            if (!isFeatureSelected(feature, selected_features)) {
+            if (find(selected_features.begin(), selected_features.end(), feature) == selected_features.end()) {
                 continue;
             }
 
@@ -165,7 +179,7 @@ void performBackwardElimination(Problem& problem, int num_features) {
                        candidate_feature_set.selected_features.end(),
                        feature),
                 candidate_feature_set.selected_features.end());
-            candidate_feature_set.accuracy = problem.Nearest_N(candidate_feature_set.selected_features);
+            candidate_feature_set.accuracy = calculateAccuracy(candidate_feature_set.selected_features);
             feature_queue.push(candidate_feature_set);
         }
 
@@ -193,15 +207,19 @@ void performBackwardElimination(Problem& problem, int num_features) {
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        cout << "Error: Invalid program call" << endl;
+        cout << "Error: Invalid program call. Provide the dataset filename." << endl;
         return 1;
     }
 
     string input_file(argv[1]);
     vector<Instance> instances = parseInputFile(input_file);
 
-    Problem problem(instances);
-    int num_features = instances.at(0).get_features().size();
+    if (instances.empty()) {
+        cout << "Error: Failed to parse input file or file is empty." << endl;
+        return 1;
+    }
+
+    int num_features = instances[0].get_features().size();
 
     cout << "Welcome to the Feature Selection Algorithm" << endl;
     cout << "Choose the selection algorithm:" << endl;
@@ -212,9 +230,9 @@ int main(int argc, char* argv[]) {
     cin >> choice;
 
     if (choice == 1) {
-        performForwardSelection(problem, num_features);
+        performForwardSelection(instances, num_features);
     } else {
-        performBackwardElimination(problem, num_features);
+        performBackwardElimination(instances, num_features);
     }
 
     return 0;
