@@ -49,6 +49,7 @@ struct FeatureSet {
     }
 
     void display() const {
+        //store features
         vector<int> incremented_features = incrementIndices(selected_features);
         ostringstream oss;
 
@@ -67,6 +68,7 @@ vector<Instance> parseInputFile(const string& filename) {
     ifstream file_stream(filename);
     vector<Instance> instances;
 
+    // parse file only while input stream is good
     while (file_stream.good()) {
         double label;
         vector<double> feature_values;
@@ -206,6 +208,7 @@ void performBackwardElimination(const vector<Instance>& instances, int num_featu
 }
 
 int main(int argc, char* argv[]) {
+    //error handlers for file stream
     if (argc != 2) {
         cout << "Error: Invalid program call. Provide the dataset filename." << endl;
         return 1;
