@@ -92,7 +92,7 @@ vector<Instance> parseInputFile(const string& filename) {
     return instances;
 }
 
-// Dummy accuracy evaluation function
+// accuracy evaluation function (dummy)
 double calculateAccuracy(const vector<int>& features) {
     return static_cast<double>(rand()) / RAND_MAX * 100.0;
 }
